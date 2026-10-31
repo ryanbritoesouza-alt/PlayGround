@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#071c24" />
+<title>FRUITBOUND · Grand Tide</title>
+<meta name="description" content="Fruitbound: Grand Tide — an original open-sea action RPG. Awaken a devil fruit, hunt pirates, and sail to Ember Isle. Built with Three.js." />
+<link rel="stylesheet" href="./styles.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js",
+    "three/addons/": "./vendor/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene" aria-label="Fruitbound game world"></canvas>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+
+  <!-- ============================== HUD ============================== -->
+  <div id="hud" class="hidden" aria-live="polite">
+    <div id="top-left">
+      <div class="player-card">
+        <div class="level-badge"><span>LV</span><b id="level-value">1</b></div>
+        <div class="player-meta">
+          <div class="player-name">KAI <em id="player-title">ROOKIE</em></div>
+          <div class="bounty-row">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.7 6.1 6.6.6-5 4.4 1.5 6.5L12 16.2 6.2 19.6l1.5-6.5-5-4.4 6.6-.6z"/></svg>
+            <span id="bounty-value">0</span>
+            <i>BOUNTY</i>
+          </div>
+        </div>
+      </div>
+      <div class="wallet">
+        <div class="coin-icon">Ƀ</div>
+        <span id="beli-value">0</span>
+        <small>BELI</small>
+        <button id="mute-btn" class="icon-btn" aria-label="Toggle sound" title="Sound (M)">
+          <svg viewBox="0 0 24 24" class="sound-on"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-8v2a6 6 0 0 1 0 12v2a8 8 0 0 0 0-16z"/></svg>
+          <svg viewBox="0 0 24 24" class="sound-off hidden"><path d="M4 9v6h4l5 4V5L8 9H4zm15.3 3l2.1-2.1-1.4-1.4-2.1 2.1-2.1-2.1-1.4 1.4 2.1 2.1-2.1 2.1 1.4 1.4 2.1-2.1 2.1 2.1 1.4-1.4z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="compass-wrap">
+      <div id="compass-tape">
+        <div class="compass-glow"></div>
+        <div class="compass-labels">
+          <span style="--a:-90">N</span><span style="--a:-45">NE</span><span style="--a:0">E</span><span style="--a:45">SE</span><span style="--a:90">S</span><span style="--a:135">SW</span><span style="--a:180">W</span><span style="--a:225">NW</span>
+        </div>
+        <div class="compass-needle"></div>
+      </div>
+      <div id="zone-name">DAWN HARBOR</div>
+    </div>
+
+    <div id="minimap-wrap">
+      <div class="mini-frame">
+        <canvas id="minimap" width="320" height="320"></canvas>
+        <div class="mini-compass n">N</div>
+        <div class="mini-compass e">E</div>
+        <div class="mini-compass s">S</div>
+        <div class="mini-compass w">W</div>
+        <div class="mini-ring"></div>
+        <button id="map-btn" class="map-btn" aria-label="Open world map">WORLD MAP <kbd>M</kbd></button>
+      </div>
+    </div>
+
+    <div id="quest-tracker">
+      <div class="quest-head">
+        <span class="quest-diamond"></span>
+        <span>GRAND TIDE</span>
+        <span class="quest-chapter" id="quest-chapter">CH. 1</span>
+      </div>
+      <h3 id="quest-title">The Rogue Tide</h3>
+      <p id="quest-objective">Find Captain Rhea at the harbor.</p>
+      <div class="quest-progress"><div id="quest-fill"></div></div>
+      <div class="quest-foot"><span id="quest-progress-text">0 / 6</span><span id="quest-distance">— m</span></div>
+    </div>
+
+    <div id="boss-bar" class="hidden">
+      <div class="boss-name"><span id="boss-rank">CAPTAIN</span> <b id="boss-name">ASHBEARD</b></div>
+      <div class="boss-hp"><div id="boss-fill"></div><i></i></div>
+      <div class="boss-sub"><span>THE ASHEN CROWN</span><span id="boss-hp-text">100%</span></div>
+    </div>
+
+    <div id="crosshair"><i></i><i></i><i></i><i></i></div>
+
+    <div id="toast-stack"></div>
+
+    <div id="bottom-left">
+      <div class="status-card">
+        <div class="fruit-orb" id="fruit-orb" title="Equipped devil fruit">
+          <span class="fruit-swirl"></span>
+          <span class="fruit-leaf"></span>
+          <b id="fruit-glyph">✦</b>
+        </div>
+        <div class="status-bars">
+          <div class="bar-row">
+            <div class="bar hp">
+              <div class="bar-fill" id="hp-fill"></div>
+              <div class="bar-shine"></div>
+              <span id="hp-text">100 / 100</span>
+            </div>
+            <span class="bar-label">HP</span>
+          </div>
+          <div class="bar-row">
+            <div class="bar energy">
+              <div class="bar-fill" id="energy-fill"></div>
+              <div class="bar-shine"></div>
+              <span id="energy-text">100 / 100</span>
+            </div>
+            <span class="bar-label">EN</span>
+          </div>
+          <div class="xp-row">
+            <div class="xp-bar"><div id="xp-fill"></div></div>
+            <span id="xp-text">0 / 100 XP</span>
+          </div>
+        </div>
+      </div>
+      <div id="fruit-switcher">
+        <button class="fruit-chip active" data-fruit="ember" title="Ember Fruit (1)"><span class="chip-orb ember">✦</span><b>EMBER</b><kbd>1</kbd></button>
+        <button class="fruit-chip locked" data-fruit="gale" title="Gale Fruit (2)"><span class="chip-orb gale">≋</span><b>GALE</b><kbd>2</kbd><i class="lock">🔒</i></button>
+        <button class="fruit-chip locked" data-fruit="tide" title="Tide Fruit (3)"><span class="chip-orb tide">◉</span><b>TIDE</b><kbd>3</kbd><i class="lock">🔒</i></button>
+      </div>
+    </div>
+
+    <div id="hotbar">
+      <div class="slot" id="slot-attack" data-slot="attack">
+        <span class="slot-key">LMB</span>
+        <svg viewBox="0 0 24 24" class="slot-icon"><path d="M20.7 3.3a2 2 0 0 0-2.8 0L8.4 12.8l2.8 2.8 9.5-9.5a2 2 0 0 0 0-2.8zM7.5 14.1l-2.7 2.6c-.5.5-.5 1.3 0 1.8l.7.7c.5.5 1.3.5 1.8 0l2.6-2.7-2.4-2.4z"/></svg>
+        <span class="slot-name">CUTLASS</span>
+        <div class="cooldown"></div>
+      </div>
+      <div class="slot" id="slot-dash" data-slot="dash">
+        <span class="slot-key">Q</span>
+        <svg viewBox="0 0 24 24" class="slot-icon"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+        <span class="slot-name">DASH</span>
+        <div class="cooldown"></div>
+      </div>
+      <div class="slot fruit-slot" id="slot-skill" data-slot="skill">
+        <span class="slot-key">E</span>
+        <svg viewBox="0 0 24 24" class="slot-icon"><path d="M12 2c2 4 6 5 6 10a6 6 0 1 1-12 0c0-5 4-6 6-10zm0 5c-1 2-3 3-3 5a3 3 0 0 0 6 0c0-2-2-3-3-5z"/></svg>
+        <span class="slot-name" id="skill-name">EMBER BALL</span>
+        <span class="slot-cost" id="skill-cost">20</span>
+        <div class="cooldown"></div>
+        <span class="cd-text"></span>
+      </div>
+      <div class="slot fruit-slot" id="slot-ultimate" data-slot="ultimate">
+        <span class="slot-key">R</span>
+        <svg viewBox="0 0 24 24" class="slot-icon"><path d="M12 1l2.4 5.5L20 5l-1.8 6L24 12l-5.8 1L20 19l-5.6-1.5L12 23l-2.4-5.5L4 19l1.8-6L0 12l5.8-1L4 5l5.6 1.5z"/></svg>
+        <span class="slot-name" id="ultimate-name">INFERNO</span>
+        <span class="slot-cost" id="ultimate-cost">45</span>
+        <div class="cooldown"></div>
+        <span class="cd-text"></span>
+      </div>
+    </div>
+
+    <div id="interact-prompt" class="hidden">
+      <kbd>F</kbd><span id="interact-text">Talk to Captain Rhea</span>
+    </div>
+
+    <div id="hint-bar"><span class="dot"></span> <b>Right-drag</b> to look · <b>Click</b> to lock mouse · <b>H</b> for help</div>
+
+    <div id="touch-controls">
+      <div id="joystick"><div class="joy-base"><div class="joy-knob" id="joy-knob"></div></div></div>
+      <div id="touch-actions">
+        <button class="touch-btn jump" data-action="jump" aria-label="Jump">⤒</button>
+        <button class="touch-btn interact" data-action="interact" aria-label="Interact">F</button>
+        <button class="touch-btn dash" data-action="dash" aria-label="Dash">Q</button>
+        <button class="touch-btn skill" data-action="skill" aria-label="Fruit skill">E</button>
+        <button class="touch-btn ultimate" data-action="ultimate" aria-label="Ultimate">R</button>
+        <button class="touch-btn attack" data-action="attack" aria-label="Attack">
+          <svg viewBox="0 0 24 24"><path d="M20.7 3.3a2 2 0 0 0-2.8 0L8.4 12.8l2.8 2.8 9.5-9.5a2 2 0 0 0 0-2.8zM7.5 14.1l-2.7 2.6c-.5.5-.5 1.3 0 1.8l.7.7c.5.5 1.3.5 1.8 0l2.6-2.7-2.4-2.4z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="flash"></div>
+  </div>
+
+  <!-- ============================ START ============================ -->
+  <div id="start-screen">
+    <div class="start-bg"></div>
+    <div class="start-top">
+      <div class="brand-mark"><span class="brand-orb">✦</span> ORIGINAL SEAFARING ADVENTURE</div>
+      <div class="build-chip">THREE.JS · v1.0</div>
+    </div>
+    <div class="start-main">
+      <div class="eyebrow"><span></span> THE GRAND TIDE AWAITS <span></span></div>
+      <h1><span class="title-fruit">FRUIT</span><span class="title-bound">BOUND</span></h1>
+      <div class="subtitle"><i></i> GRAND TIDE <i></i></div>
+      <p class="tagline">Awaken a devil fruit. Hunt the Ashen Crown.<br />Sail a living ocean where every island hides a legend.</p>
+      <div class="start-actions">
+        <button id="play-btn" class="play-btn" aria-label="Play Now">
+          <span class="play-icon">▶</span>
+          <span><b>PLAY NOW</b><small>Step onto the deck</small></span>
+        </button>
+        <button id="start-map-btn" class="ghost-btn">WORLD MAP</button>
+      </div>
+      <div class="start-features">
+        <span><b>3</b> Devil Fruits</span>
+        <span><b>4</b> Islands</span>
+        <span><b>1</b> Legendary Boss</span>
+      </div>
+    </div>
+    <div class="start-bottom">
+      <div class="controls-strip">
+        <span><kbd>WASD</kbd> Move</span>
+        <span><kbd>SHIFT</kbd> Sprint</span>
+        <span><kbd>SPACE</kbd> Jump</span>
+        <span><kbd>LMB</kbd> Attack</span>
+        <span><kbd>Q</kbd> Dash</span>
+        <span><kbd>E</kbd> Skill</span>
+        <span><kbd>R</kbd> Ultimate</span>
+        <span><kbd>F</kbd> Interact</span>
+      </div>
+      <div class="start-note">An original game inspired by the golden age of anime-style pirate adventures.<br />No downloads. Runs in your browser.</div>
+    </div>
+    <div class="start-deco fruit-deco d1"></div>
+    <div class="start-deco fruit-deco d2"></div>
+  </div>
+
+  <!-- ============================ OVERLAYS ============================ -->
+  <div id="damage-layer"></div>
+  <div id="vignette-hit"></div>
+
+  <div id="dialogue" class="hidden">
+    <div class="dialogue-portrait" id="dialogue-portrait">R</div>
+    <div class="dialogue-body">
+      <div class="dialogue-name" id="dialogue-name">CAPTAIN RHEA <span>HARBOR MASTER</span></div>
+      <p id="dialogue-text"></p>
+      <div class="dialogue-actions" id="dialogue-actions"></div>
+    </div>
+    <button class="dialogue-close" id="dialogue-close" aria-label="Close dialogue">✕</button>
+  </div>
+
+  <div id="levelup-banner" class="hidden">
+    <div class="levelup-rays"></div>
+    <span>LEVEL UP</span>
+    <b id="levelup-level">2</b>
+    <small>+2 SKILL POWER · +10 MAX HEALTH</small>
+  </div>
+
+  <div id="zone-banner" class="hidden">
+    <span>NOW ENTERING</span>
+    <b id="zone-banner-name">EMBER ISLE</b>
+    <small id="zone-banner-sub">Volcanic waters · Danger</small>
+  </div>
+
+  <div id="death-screen" class="hidden">
+    <div class="death-inner">
+      <span class="death-kicker">THE SEA CLAIMS ALL</span>
+      <h2>WASHED ASHORE</h2>
+      <p>You lost <b id="death-loss">0</b> Beli. Dawn Harbor's fire will mend your wounds.</p>
+      <div class="death-count"><b id="death-count">3</b><span>seconds</span></div>
+      <button id="respawn-btn" class="play-btn small"><span class="play-icon">↻</span><span><b>RISE AGAIN</b><small>Return to Dawn Harbor</small></span></button>
+    </div>
+  </div>
+
+  <div id="victory-screen" class="hidden">
+    <div class="victory-inner">
+      <span class="victory-kicker">THE GRAND TIDE REMEMBERS</span>
+      <h2>ASHEN CROWN<br /><em>BROKEN</em></h2>
+      <p>Captain Ashbeard has fallen. The seas whisper a new name — <b>yours</b>.</p>
+      <div class="victory-rewards">
+        <div><span>+5,000</span><small>BELI</small></div>
+        <div><span>+1,200</span><small>EXPERIENCE</small></div>
+        <div><span>TIDE FRUIT</span><small>MYTHICAL</small></div>
+      </div>
+      <button id="victory-btn" class="play-btn"><span class="play-icon">⚓</span><span><b>KEEP SAILING</b><small>The tide is yours</small></span></button>
+    </div>
+  </div>
+
+  <div id="pause-menu" class="hidden">
+    <div class="pause-inner">
+      <span class="pause-kicker">VOYAGE PAUSED</span>
+      <h2>FRUITBOUND</h2>
+      <div class="pause-stats">
+        <div><small>LEVEL</small><b id="pause-level">1</b></div>
+        <div><small>BOUNTY</small><b id="pause-bounty">0</b></div>
+        <div><small>BELI</small><b id="pause-beli">0</b></div>
+      </div>
+      <button id="resume-btn" class="play-btn"><span class="play-icon">▶</span><span><b>RESUME</b><small>Back to the tide</small></span></button>
+      <button id="reset-btn" class="ghost-btn danger">RESET VOYAGE</button>
+      <p class="pause-hint">ESC / P to resume · M to mute · H for controls</p>
+    </div>
+  </div>
+
+  <div id="map-overlay" class="hidden">
+    <div class="map-panel">
+      <div class="map-head"><div><span>THE GRAND TIDE</span><h2>SEA CHART</h2></div><button id="map-close" class="icon-btn" aria-label="Close map">✕</button></div>
+      <canvas id="world-map" width="1200" height="680"></canvas>
+      <div class="map-legend">
+        <span><i class="lg you"></i> You</span>
+        <span><i class="lg quest"></i> Quest</span>
+        <span><i class="lg danger"></i> Danger</span>
+        <span><i class="lg boss"></i> Boss</span>
+        <span class="map-coords" id="map-coords">0.0° N · 0.0° E</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="help-overlay" class="hidden">
+    <div class="help-panel">
+      <div class="map-head"><div><span>CAPTAIN'S NOTES</span><h2>CONTROLS</h2></div><button id="help-close" class="icon-btn" aria-label="Close help">✕</button></div>
+      <div class="help-grid">
+        <div><kbd>W A S D</kbd><span>Move</span></div>
+        <div><kbd>SHIFT</kbd><span>Sprint</span></div>
+        <div><kbd>SPACE</kbd><span>Jump / double jump</span></div>
+        <div><kbd>MOUSE</kbd><span>Look · click to lock</span></div>
+        <div><kbd>LMB</kbd><span>Cutlass combo</span></div>
+        <div><kbd>Q</kbd><span>Dash</span></div>
+        <div><kbd>E</kbd><span>Fruit skill</span></div>
+        <div><kbd>R</kbd><span>Fruit ultimate</span></div>
+        <div><kbd>F</kbd><span>Interact / board</span></div>
+        <div><kbd>1 2 3</kbd><span>Switch fruit</span></div>
+        <div><kbd>M</kbd><span>Sea chart</span></div>
+        <div><kbd>ESC / P</kbd><span>Pause</span></div>
+      </div>
+      <p class="help-tip">On touch screens: left joystick to move, drag the right side to look, and use the action buttons. Reach level 5 to unlock your ultimate.</p>
+    </div>
+  </div>
+
+  <div id="loading">
+    <div class="load-mark">✦</div>
+    <div class="load-text">RAISING THE TIDE</div>
+    <div class="load-bar"><i></i></div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
