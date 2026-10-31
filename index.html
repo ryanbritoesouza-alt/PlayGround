@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>HOTEL ECHOES — a Doors-inspired nightmare</title>
+<meta name="description" content="A first-person hotel horror game inspired by DOORS. Survive 100 doors, hide from Rush and Ambush, stare down Screech, escape Halt, and outwit The Figure in the library on door 50." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23070605'/%3E%3Crect x='16' y='8' width='32' height='48' rx='2' fill='%23241a12' stroke='%23c9a961' stroke-width='2'/%3E%3Ccircle cx='41' cy='34' r='2.5' fill='%23c9a961'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+  <canvas id="game" aria-label="Hotel Echoes first-person view"></canvas>
+
+  <div id="vignette" aria-hidden="true"></div>
+  <div id="grain" aria-hidden="true"></div>
+  <div id="static" aria-hidden="true"></div>
+  <div id="damage" aria-hidden="true"></div>
+
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div id="door-label">DOOR <span id="door-num">01</span><em id="room-type">LOBBY</em></div>
+      <div id="objective-wrap">
+        <span class="hud-kicker">OBJECTIVE</span>
+        <div id="objective">Find the next door.</div>
+      </div>
+    </div>
+
+    <div id="crosshair" aria-hidden="true"></div>
+
+    <div id="warning" aria-live="assertive"></div>
+    <div id="subtitle" aria-live="polite"></div>
+    <div id="prompt"></div>
+
+    <div class="hud-bottom">
+      <div class="status-block">
+        <div class="bar-meta"><span>VITALS</span><b id="health-num">100</b></div>
+        <div class="bar health"><div id="health-fill"></div></div>
+        <div class="bar stamina"><div id="stamina-fill"></div></div>
+        <div id="inventory"></div>
+      </div>
+      <div class="status-block right">
+        <div id="noise-wrap" class="hidden">
+          <div class="bar-meta"><span>NOISE</span><b id="noise-label">SILENT</b></div>
+          <div class="bar noise"><div id="noise-fill"></div></div>
+        </div>
+        <div id="battery-wrap">
+          <div class="bar-meta"><span>LIGHT</span><b id="battery-num">100%</b></div>
+          <div class="bar battery"><div id="battery-fill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="hide-overlay" class="hidden">
+      <div class="hide-top"></div>
+      <div class="hide-bottom"><span>HIDDEN</span><em>Keep still. Hold your breath.</em></div>
+    </div>
+
+    <div id="fade"></div>
+  </div>
+
+  <section id="menu" class="screen menu-screen">
+    <div class="menu-content">
+      <p class="eyebrow">A fan-made horror odyssey</p>
+      <h1>HOTEL<br /><span>ECHOES</span></h1>
+      <p class="tagline">One hundred doors. One way out.<br />Something is waiting behind the fiftieth.</p>
+      <div class="menu-actions">
+        <button id="btn-continue" class="btn primary hidden">CONTINUE <small>DOOR <span id="continue-door">01</span></small></button>
+        <button id="btn-start" class="btn primary">BEGIN RUN <small>DOOR 01</small></button>
+        <button id="btn-library" class="btn">THE LIBRARY <small>DOOR 50</small></button>
+        <div class="btn-row">
+          <button id="btn-how" class="btn ghost">HOW TO PLAY</button>
+          <button id="btn-settings" class="btn ghost">SETTINGS</button>
+        </div>
+      </div>
+      <div class="record">
+        <span>BEST RUN <b id="best-record">—</b></span>
+        <i></i>
+        <span>CHECKPOINT <b id="checkpoint-record">—</b></span>
+      </div>
+    </div>
+    <div class="menu-footer">
+      <span>Inspired by <b>DOORS</b> by LSPLASH</span>
+      <span>Fan project · Not affiliated</span>
+    </div>
+    <div class="menu-hint"><span class="dot"></span> Click to enable sound · Headphones recommended</div>
+  </section>
+
+  <section id="how" class="screen modal-screen hidden">
+    <div class="panel wide">
+      <div class="panel-head">
+        <div><p class="eyebrow">Survival guide</p><h2>HOW TO PLAY</h2></div>
+        <button class="close" data-close="how" aria-label="Close">×</button>
+      </div>
+      <div class="how-grid">
+        <div>
+          <h3>CONTROLS</h3>
+          <ul class="key-list">
+            <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Move</span></li>
+            <li><kbd>MOUSE</kbd><span>Look around</span></li>
+            <li><kbd>SHIFT</kbd><span>Sprint — loud and tiring</span></li>
+            <li><kbd>C</kbd><span>Crouch — slow, quiet, low</span></li>
+            <li><kbd>E</kbd><span>Open · take · hide · escape</span></li>
+            <li><kbd>F</kbd><span>Flashlight</span></li>
+            <li><kbd>SPACE</kbd><span>Jump</span></li>
+            <li><kbd>H</kbd><span>Use bandage</span></li>
+            <li><kbd>ESC</kbd><span>Pause</span></li>
+          </ul>
+          <p class="fine">Find the key. Open the next door. Reach door 100.</p>
+        </div>
+        <div>
+          <h3>WHAT WAITS INSIDE</h3>
+          <dl class="entity-list">
+            <dt><span class="entity-dot rush"></span>RUSH</dt><dd>When the lights start screaming, hide in a wardrobe or under a bed. Do not be in the open when it passes.</dd>
+            <dt><span class="entity-dot ambush"></span>AMBUSH</dt><dd>It comes back. And back. Stay hidden until the lights are steady again.</dd>
+            <dt><span class="entity-dot screech"></span>SCREECH</dt><dd>A whisper in the dark. Find it with your eyes and stare until it breaks.</dd>
+            <dt><span class="entity-dot halt"></span>HALT</dt><dd>It blocks the hall and pulls toward you. Back away. Never let it touch you. Wait for the flash.</dd>
+            <dt><span class="entity-dot figure"></span>THE FIGURE</dt><dd>Door 50. It is blind, but it hears everything. Crouch, stay quiet, and hide under the library tables. Reach the elevator.</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="panel-foot">
+        <p>Checkpoints are lit every ten doors by the Guiding Light. Death returns you to the last one.</p>
+        <button class="btn primary" data-close="how">I UNDERSTAND</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="settings" class="screen modal-screen hidden">
+    <div class="panel narrow">
+      <div class="panel-head">
+        <div><p class="eyebrow">Tune the dark</p><h2>SETTINGS</h2></div>
+        <button class="close" data-close="settings" aria-label="Close">×</button>
+      </div>
+      <div class="setting">
+        <label for="set-volume">MASTER VOLUME <b id="vol-val">80%</b></label>
+        <input id="set-volume" type="range" min="0" max="100" value="80" />
+      </div>
+      <div class="setting">
+        <label for="set-sens">MOUSE SENSITIVITY <b id="sens-val">1.0</b></label>
+        <input id="set-sens" type="range" min="30" max="250" value="100" />
+      </div>
+      <div class="setting toggle-row">
+        <label for="set-invert">INVERT LOOK</label>
+        <input id="set-invert" type="checkbox" />
+      </div>
+      <div class="setting toggle-row">
+        <label for="set-grain">FILM GRAIN</label>
+        <input id="set-grain" type="checkbox" checked />
+      </div>
+      <div class="setting toggle-row">
+        <label for="set-shake">SCREEN SHAKE</label>
+        <input id="set-shake" type="checkbox" checked />
+      </div>
+      <p class="fine center">Settings are saved on this device.</p>
+      <button class="btn primary full" data-close="settings">DONE</button>
+    </div>
+  </section>
+
+  <section id="pause" class="screen pause-screen hidden">
+    <div class="pause-box">
+      <p class="eyebrow">The hotel waits</p>
+      <h2>PAUSED</h2>
+      <div class="pause-stats">
+        <span>DOOR <b id="pause-door">01</b></span>
+        <span>TIME <b id="pause-time">00:00</b></span>
+      </div>
+      <button id="btn-resume" class="btn primary full">RESUME</button>
+      <button id="btn-pause-settings" class="btn full">SETTINGS</button>
+      <button id="btn-restart" class="btn ghost full">RESTART RUN</button>
+      <button id="btn-quit" class="btn ghost full">QUIT TO MENU</button>
+    </div>
+  </section>
+
+  <section id="death" class="screen end-screen hidden">
+    <div class="end-box">
+      <p class="eyebrow red">The hotel keeps what it takes</p>
+      <h2 id="death-title">YOU DIED</h2>
+      <p id="death-cause" class="death-cause">Rush found you in the open.</p>
+      <div class="end-stats">
+        <div><span>DOOR</span><b id="death-door">01</b></div>
+        <div><span>BEST</span><b id="death-best">01</b></div>
+        <div><span>TIME</span><b id="death-time">00:00</b></div>
+      </div>
+      <div class="end-actions">
+        <button id="btn-retry" class="btn primary full">RETRY FROM CHECKPOINT</button>
+        <button id="btn-newrun" class="btn full">NEW RUN</button>
+        <button id="btn-death-menu" class="btn ghost full">MAIN MENU</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="win" class="screen end-screen win-screen hidden">
+    <div class="end-box">
+      <p class="eyebrow gold">Door one hundred</p>
+      <h2>YOU ESCAPED</h2>
+      <p class="death-cause">Behind you, the hotel folds itself back into the dark.<br />For now.</p>
+      <div class="end-stats">
+        <div><span>DOORS</span><b>100</b></div>
+        <div><span>DEATHS</span><b id="win-deaths">0</b></div>
+        <div><span>TIME</span><b id="win-time">00:00</b></div>
+      </div>
+      <div class="end-actions">
+        <button id="btn-again" class="btn primary full">PLAY AGAIN</button>
+        <button id="btn-win-menu" class="btn ghost full">MAIN MENU</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast"></div>
+  <div id="loading"><span>HOTEL ECHOES</span><em>Waking the halls…</em></div>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
