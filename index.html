@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#082f46" />
+    <meta name="description" content="Fruit Seas — a blocky open-sea pirate adventure inspired by Blox Fruits. Sail, find devil fruits, fight marines and defeat Captain Morro." />
+    <title>Fruit Seas — A Blocky Pirate Adventure</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='34' r='22' fill='%23f2a13d'/%3E%3Cpath d='M32 10c2-4 6-4 7-2-2 3-4 4-7 4z' fill='%233f8f4e'/%3E%3Cpath d='M32 18c4 7-3 8 1 13 3-4 2-7 5-9 5 7 5 15-1 20-6 4-14 1-14-7 0-6 4-7 3-12 2 1 3 4 3 6 2-4 2-8 3-11z' fill='%23fff3c4'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game" aria-label="Fruit Seas game world"></canvas>
+      <div class="screen-fx" id="screenFx"></div>
+
+      <div id="hud" class="hud hidden">
+        <div class="hud-topleft">
+          <div class="avatar">
+            <div class="avatar-ring"></div>
+            <span id="levelNum">1</span>
+          </div>
+          <div class="vitals">
+            <div class="name-row">
+              <span id="playerTitle">ROOKIE PIRATE</span>
+              <span class="lvl-tag">LV <b id="levelNum2">1</b></span>
+            </div>
+            <div class="bar hp"><i id="hpFill"></i><span id="hpText">120 / 120</span></div>
+            <div class="bar en"><i id="enFill"></i><span id="enText">100</span></div>
+            <div class="bar xp"><i id="xpFill"></i></div>
+          </div>
+        </div>
+
+        <div class="hud-topright">
+          <div class="top-pills">
+            <div class="pill berries" title="Berries"><span class="coin"></span><b id="berryText">0</b></div>
+            <button id="logBtn" class="icon-btn" title="Captain's log" aria-label="Captain's log">☰</button>
+            <button id="pauseBtn" class="icon-btn" title="Pause" aria-label="Pause">Ⅱ</button>
+            <button id="muteBtn" class="icon-btn" title="Toggle sound" aria-label="Toggle sound">♪</button>
+          </div>
+          <div class="minimap">
+            <canvas id="minimap" width="360" height="360"></canvas>
+            <div class="mini-ring"></div>
+            <span class="mini-n">N</span>
+          </div>
+        </div>
+
+        <div id="bossWrap" class="boss-wrap hidden">
+          <div class="boss-name"><span>CAPTAIN MORRO</span><small>SKULL ROCK</small></div>
+          <div class="boss-bar"><i id="bossFill"></i></div>
+        </div>
+
+        <div id="questCard" class="quest-card">
+          <div class="quest-kicker">CURRENT QUEST</div>
+          <div class="quest-title" id="questTitle">Landfall</div>
+          <div class="quest-obj" id="questObj">Talk to Captain Rhea</div>
+          <div class="quest-progress"><i id="questFill"></i></div>
+          <div class="quest-dist"><span class="quest-arrow" id="questArrow">➤</span><span id="questDist">0 m</span></div>
+        </div>
+
+        <div id="abilityBar" class="ability-bar">
+          <div class="ability" id="atkAbility">
+            <div class="ab-icon">⚔</div>
+            <div class="ab-key">SPACE</div>
+            <div class="ab-cd" id="atkCd"></div>
+          </div>
+          <div class="ability fruit" id="fruitAbility">
+            <div class="ab-icon" id="fruitIcon"></div>
+            <div class="ab-key">Q</div>
+            <div class="ab-cd" id="fruitCd"></div>
+            <div class="ab-name" id="fruitName">Fire Fist</div>
+          </div>
+          <div class="ability" id="dashAbility">
+            <div class="ab-icon">»</div>
+            <div class="ab-key">SHIFT</div>
+            <div class="ab-cd" id="dashCd"></div>
+          </div>
+        </div>
+
+        <div id="prompt" class="prompt hidden"><kbd>E</kbd><span id="promptText"></span></div>
+        <div id="toasts" class="toasts"></div>
+        <div id="islandBanner" class="island-banner"><div class="ib-name"></div><div class="ib-sub"></div></div>
+        <div id="bossWarning" class="boss-warning hidden">⚠ CAPTAIN MORRO</div>
+      </div>
+
+      <div id="touchControls" class="touch-controls hidden">
+        <div id="joystick" class="joystick"><div class="stick" id="stick"></div></div>
+        <div class="touch-actions">
+          <button class="tbtn interact" data-action="interact" aria-label="Interact">E</button>
+          <button class="tbtn fruit" data-action="fruit" aria-label="Fruit skill">✦</button>
+          <button class="tbtn dash" data-action="dash" aria-label="Dash">»</button>
+          <button class="tbtn attack" data-action="attack" aria-label="Attack">⚔</button>
+        </div>
+      </div>
+
+      <!-- START -->
+      <div id="startScreen" class="overlay start">
+        <div class="start-glow"></div>
+        <div class="start-content">
+          <div class="logo-wrap">
+            <div class="logo-eyebrow">AN OPEN-SEA PIRATE ADVENTURE</div>
+            <h1 class="logo">FRUIT<span>SEAS</span></h1>
+            <div class="logo-sub">Blocky pirates. Devil fruits. One legendary voyage.</div>
+          </div>
+
+          <div class="start-panel">
+            <div class="choose-label"><span>CHOOSE YOUR DEVIL FRUIT</span></div>
+            <div id="fruitChoices" class="fruit-choices"></div>
+            <div class="locked-row"><span class="lock-dots">???</span> Three more fruits are hidden across the archipelago</div>
+            <button id="playBtn" class="btn-primary">SET SAIL <span>→</span></button>
+            <div class="start-controls">
+              <span><kbd>WASD</kbd> move</span>
+              <span><kbd>SPACE</kbd> slash</span>
+              <span><kbd>Q</kbd> fruit skill</span>
+              <span><kbd>SHIFT</kbd> dash</span>
+              <span><kbd>E</kbd> interact</span>
+              <span><kbd>TAB</kbd> log</span>
+            </div>
+          </div>
+
+          <div class="start-footer">
+            A fan-made browser game inspired by the open-sea sandbox genre. Not affiliated with Roblox or Blox Fruits.
+          </div>
+        </div>
+      </div>
+
+      <!-- DIALOGUE -->
+      <div id="dialogue" class="overlay modal hidden">
+        <div class="dialog-card">
+          <div class="dialog-head">
+            <div class="dialog-portrait" id="dialogPortrait">R</div>
+            <div>
+              <div class="dialog-kicker" id="dialogKicker">DAWN ISLE</div>
+              <h3 id="dialogName">Captain Rhea</h3>
+            </div>
+          </div>
+          <p id="dialogText"></p>
+          <div class="dialog-actions">
+            <button id="dialogBtn" class="btn-primary">Continue</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHOP -->
+      <div id="shop" class="overlay modal hidden">
+        <div class="shop-card">
+          <header class="panel-head">
+            <div>
+              <div class="panel-kicker">DAWN ISLE · SUPPLIES</div>
+              <h2>Old Marlow's Wares</h2>
+            </div>
+            <div class="pill berries"><span class="coin"></span><b id="shopBerries">0</b></div>
+          </header>
+          <div id="shopItems" class="shop-items"></div>
+          <button id="shopClose" class="btn-ghost">Back to the deck</button>
+        </div>
+      </div>
+
+      <!-- INVENTORY -->
+      <div id="inventory" class="overlay modal hidden">
+        <div class="inv-card">
+          <header class="panel-head">
+            <div>
+              <div class="panel-kicker">CAPTAIN'S LOG</div>
+              <h2>Voyage Record</h2>
+            </div>
+            <button id="invClose" class="close-btn" aria-label="Close">×</button>
+          </header>
+          <div class="inv-grid">
+            <section>
+              <h4>Devil Fruits <small id="fruitCount">1 / 6</small></h4>
+              <div id="fruitCollection" class="fruit-collection"></div>
+            </section>
+            <section>
+              <h4>Captain</h4>
+              <div id="invStats" class="inv-stats"></div>
+              <h4>Quest Log</h4>
+              <div id="invQuests" class="inv-quests"></div>
+              <div class="inv-tip">Tip: fruit shrines glow on distant islands. Claim one to swap powers.</div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAUSE -->
+      <div id="pauseScreen" class="overlay modal hidden">
+        <div class="pause-card">
+          <div class="panel-kicker">ANCHORED</div>
+          <h2>Paused</h2>
+          <p>The sea waits for no pirate, but it can wait a minute.</p>
+          <div class="pause-actions">
+            <button id="resumeBtn" class="btn-primary">Resume Voyage</button>
+            <button id="pauseMuteBtn" class="btn-ghost">Sound: On</button>
+            <button id="restartBtn" class="btn-ghost">Restart Voyage</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VICTORY -->
+      <div id="victoryScreen" class="overlay modal hidden">
+        <div class="victory-card">
+          <div class="victory-rays"></div>
+          <div class="panel-kicker">THE SEAS ARE YOURS</div>
+          <h2>Captain Morro Falls</h2>
+          <p>Skull Rock is quiet at last. Somewhere beyond the horizon, a new legend is already being told.</p>
+          <div id="victoryStats" class="victory-stats"></div>
+          <button id="sailAgainBtn" class="btn-primary">Sail Again <span>↻</span></button>
+        </div>
+      </div>
+
+      <!-- DEATH -->
+      <div id="deathScreen" class="overlay modal hidden">
+        <div class="death-card">
+          <div class="panel-kicker">THE SEA CLAIMS ANOTHER</div>
+          <h2>You Were Defeated</h2>
+          <p>Every great pirate gets knocked down. The tide will carry you back to Dawn Isle.</p>
+          <button id="respawnBtn" class="btn-primary">Wash Ashore</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
